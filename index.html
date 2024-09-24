@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반응속도 게임</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        #nickname-form, #game-area {
+            width: 300px;
+            margin-bottom: 20px;
+        }
+        #game-area {
+            height: 300px;
+            background-color: blue;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            user-select: none;
+        }
+        #result, #leaderboard {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        #leaderboard {
+            text-align: center;
+        }
+        #leaderboard h2 {
+            margin-bottom: 10px;
+        }
+        #leaderboard ol {
+            padding-left: 20px;
+        }
+        input, button {
+            font-size: 18px;
+            padding: 5px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="nickname-form">
+        <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요">
+        <button id="start-button">게임 시작</button>
+    </div>
+    <div id="game-area" style="display: none;">클릭하여 시작</div>
+    <div id="result"></div>
+    <div id="leaderboard">
+        <h2>최고 기록</h2>
+        <ol id="top-scores"></ol>
+    </div>
+
+    <script>
+        let nicknameForm = document.getElementById('nickname-form');
+        let nicknameInput = document.getElementById('nickname-input');
+        let startButton = document.getElementById('start-button');
+        let gameArea = document.getElementById('game-area');
+        let result = document.getElementById('result');
+        let topScores = document.getElementById('top-scores');
+        let startTime, endTime;
+        let gameState = 'waiting';
+        let timeoutId;
+        let currentNickname = '';
+
+        // 페이지 로드 시 기존 기록 불러오기
+        loadLeaderboard();
+
+        startButton.onclick = function() {
+            if (nicknameInput.value.trim() !== '') {
+                currentNickname = nicknameInput.value.trim();
+                nicknameForm.style.display = 'none';
+                gameArea.style.display = 'flex';
+                result.textContent = '게임 영역을 클릭하여 시작하세요.';
+            } else {
+                alert('닉네임을 입력해주세요!');
+            }
+        }
+
+        gameArea.onclick = function() {
+            if (gameState === 'waiting') {
+                gameState = 'ready';
+                this.style.backgroundColor = 'blue';
+                this.textContent = '준비...';
+                result.textContent = '초록색으로 변할 때 클릭하세요!';
+                
+                let randomDelay = Math.floor(Math.random() * 4000) + 1000;
+                timeoutId = setTimeout(() => {
+                    if (gameState === 'ready') {
+                        gameState = 'started';
+                        this.style.backgroundColor = 'green';
+                        this.textContent = '클릭!';
+                        startTime = new Date().getTime();
+                    }
+                }, randomDelay);
+
+            } else if (gameState === 'ready') {
+                clearTimeout(timeoutId);
+                gameState = 'waiting';
+                result.textContent = '너무 일찍 클릭했습니다! 다시 시도하세요.';
+                this.style.backgroundColor = 'blue';
+                this.textContent = '클릭하여 시작';
+
+            } else if (gameState === 'started') {
+                endTime = new Date().getTime();
+                let reactionTime = endTime - startTime;
+                result.textContent = '반응 시간: ' + reactionTime + 'ms';
+                this.style.backgroundColor = 'blue';
+                this.textContent = '클릭하여 다시 시작';
+                gameState = 'waiting';
+
+                // 새로운 기록 저장 및 순위표 업데이트
+                updateLeaderboard(currentNickname, reactionTime);
+            }
+        }
+
+        function updateLeaderboard(nickname, score) {
+            let scores = JSON.parse(localStorage.getItem('reactionScores')) || [];
+            scores.push({nickname: nickname, score: score});
+            scores.sort((a, b) => a.score - b.score);
+            scores = scores.slice(0, 5);  // 상위 5개 기록만 유지
+            localStorage.setItem('reactionScores', JSON.stringify(scores));
+            loadLeaderboard();
+        }
+
+        function loadLeaderboard() {
+            let scores = JSON.parse(localStorage.getItem('reactionScores')) || [];
+            topScores.innerHTML = '';
+            scores.forEach((entry, index) => {
+                let li = document.createElement('li');
+                li.textContent = `${entry.nickname}: ${entry.score}ms`;
+                topScores.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
